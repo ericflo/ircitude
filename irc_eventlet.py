@@ -74,6 +74,13 @@ class IRCClient(object):
         # raise NotImplementedError
         pass
     
+    def channel_message(self, channel):
+        """
+        This is useful for a subclass to implement when a new message is
+        received from the user.
+        """
+        pass
+    
     def _send(self, line):
         print '<<<', repr(line)
         self._writer.write(line + '\r\n')
@@ -122,7 +129,7 @@ class IRCClient(object):
     def handle_PRIVMSG(self, line):
         metadata, _, message = line.partition(':')
         _, _, channel = metadata.strip().partition(' ')
-        self.send_command(self.nick, 'PRIVMSG', channel, message)
+        self.channel_message(channel, message)
     
     def handle_PASS(self, line):
         try:
@@ -181,8 +188,8 @@ class IRCClient(object):
                     '%s :Cannot join channel (+i)' % (channel,))
                 return
             
+            self._channels.add(channel)
             self.channel_subscribe(channel)
-            
             self.send_command(self.nick, 'JOIN', channel)
             
             # Send the logged-in nicks, in chunks of 10
