@@ -7,7 +7,7 @@ __version__ = '0.0.1'
 
 class RPL(object):
     """
-    Reply codes, mostly from http://www.irchelp.org/irchelp/rfc/chapter6.html
+    Reply codes, mostly from http://www.irchelp.org/irchelp/rfc/chapter6.html#c6_2
     """
     WELCOME = '001'
     YOURHOST = '002'
