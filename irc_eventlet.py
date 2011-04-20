@@ -49,6 +49,18 @@ class IRCClient(object):
         self.password = None
         self.nick = None
     
+    def startup(self):
+        """
+        This is executed when the server starts up.
+        """
+        pass
+    
+    def shutdown(self):
+        """
+        This is executed when the server shuts down.
+        """
+        pass
+    
     def channel_exists(self, channel):
         # This is for a subclass to implement
         # raise NotImplementedError
@@ -74,10 +86,17 @@ class IRCClient(object):
         # raise NotImplementedError
         pass
     
-    def channel_message(self, channel):
+    def channel_message(self, channel, message):
         """
         This is useful for a subclass to implement when a new message is
         received from the user.
+        """
+        pass
+    
+    def user_message(self, nick, message):
+        """
+        This is useful for a subclass to implement when a new private message
+        is received from the user.
         """
         pass
     
@@ -122,6 +141,8 @@ class IRCClient(object):
         for channel in self._channels:
             self.channel_unsubscribe(channel)
         
+        self.shutdown()
+        
         self._writer.close()
         self._reader.close()
         self._conn.close()
@@ -129,7 +150,10 @@ class IRCClient(object):
     def handle_PRIVMSG(self, line):
         metadata, _, message = line.partition(':')
         _, _, channel = metadata.strip().partition(' ')
-        self.channel_message(channel, message)
+        if channel[0] == '#':
+            self.channel_message(channel, message)
+        else:
+            self.user_message(channel, message)
     
     def handle_PASS(self, line):
         try:
@@ -156,6 +180,7 @@ class IRCClient(object):
         self.send(RPL.CREATED,
             ':This server was created %s' % (self._created,))
         self.send(RPL.MYINFO, '%s :%s w n' % (self.server_name, __version__))
+        self.startup()
     
     def handle_USER(self, line):
         pass
