@@ -27,6 +27,7 @@ class ERR(object):
     """
     NOSUCHCHANNEL = '403'
     UNKNOWNMODE = '472'
+    INVITEONLYCHAN = '473'
 
 
 class ClientQuitException(Exception):
@@ -53,6 +54,11 @@ class IRCClient(object):
         # raise NotImplementedError
         return channel == '#testing123'
     
+    def channel_allowed(self, channel):
+        # This is for a subclass to implement
+        # raise NotImplementedError
+        return True
+    
     def channel_nicks(self, channel):
         # This is for a subclass to implement
         # raise NotImplementedError
@@ -76,15 +82,17 @@ class IRCClient(object):
     def send(self, cmd, text=None):
         self._send(':%s %s %s %s' % (self.server_name, cmd, self.nick, text))
     
-    def send_command(self, from_nick, command, channel, msg):
-        self._send(':%s!%s@%s %s %s :%s' % (
+    def send_command(self, from_nick, command, channel, msg=None):
+        line = ':%s!%s@%s %s %s' % (
             from_nick,
             from_nick,
             self.server_name,
             command,
             channel,
-            msg,
-        ))
+        )
+        if msg:
+            line += ' :' + msg
+        self._send(line)
     
     def handle(self):
         try:
@@ -168,14 +176,14 @@ class IRCClient(object):
                 self.send(ERR.NOSUCHCHANNEL, '%s :No such channel' % (channel,))
                 return
             
+            if not self.channel_allowed(channel):
+                self.send(ERR.INVITEONLYCHAN,
+                    '%s :Cannot join channel (+i)' % (channel,))
+                return
+            
             self.channel_subscribe(channel)
             
-            self._send(':%s!%s@%s JOIN %s' % (
-                self.nick,
-                self.nick,
-                self.server_name,
-                channel,
-            ))
+            self.send_command(self.nick, 'JOIN', channel)
             
             # Send the logged-in nicks, in chunks of 10
             nicks = self.channel_nicks(channel)
