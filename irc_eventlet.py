@@ -166,8 +166,11 @@ class IRCClient(object):
         self._conn.close()
     
     def handle_PRIVMSG(self, line):
-        metadata, _, message = line.partition(':')
-        _, _, channel = metadata.strip().partition(' ')
+        split_line = line.split(' ')
+        if len(split_line) < 2:
+            return
+        channel = split_line[1]
+        message = ' '.join(split_line[2:]).lstrip(':')
         if channel[0] == '#':
             self.channel_message(channel, message)
         else:
