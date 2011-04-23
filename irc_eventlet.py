@@ -49,7 +49,7 @@ class IRCClient(object):
         self._reader = reader
         self._created = created or datetime.datetime.utcnow()
         
-        self._channels = set()
+        self.channels = set()
         
         self.password = None
         self.nick = None
@@ -149,7 +149,7 @@ class IRCClient(object):
         except ClientQuitException:
             pass
         
-        for channel in self._channels:
+        for channel in self.channels:
             self.channel_unsubscribe(channel)
         
         self.shutdown()
@@ -228,7 +228,7 @@ class IRCClient(object):
                     '%s :Cannot join channel (+i)' % (channel,))
                 return
             
-            self._channels.add(channel)
+            self.channels.add(channel)
             self.channel_subscribe(channel)
             self.send_command(self.nick, 'JOIN', channel)
             
