@@ -28,6 +28,7 @@ class ERR(object):
     NOSUCHCHANNEL = '403'
     UNKNOWNMODE = '472'
     INVITEONLYCHAN = '473'
+    NOTREGISTERED = '451'
 
 
 class ClientQuitException(Exception):
@@ -35,9 +36,13 @@ class ClientQuitException(Exception):
 
 
 class IRCClient(object):
-    def __init__(self, server_name, conn, writer, reader, created=None, server_motd=None):
+    def __init__(self, server_name, conn, writer, reader, created=None,
+        server_motd=None, server_badauth=None):
+
         self.server_name = server_name
         self.server_motd = server_motd or 'Message of the day'
+        self.server_badauth = (server_badauth or
+            'Your username and password were not recognized')
         
         self._conn = conn
         self._writer = writer
@@ -48,6 +53,12 @@ class IRCClient(object):
         
         self.password = None
         self.nick = None
+    
+    def auth(self):
+        """
+        Called once the nick command has been issued.
+        """
+        return True
     
     def startup(self):
         """
@@ -168,6 +179,10 @@ class IRCClient(object):
         try:
             self.nick = split_line[1]
         except IndexError:
+            raise ClientQuitException()
+
+        if not self.auth():
+            self.send(ERR.NOTREGISTERED, self.server_badauth)
             raise ClientQuitException()
 
         self.send(RPL.MOTDSTART, ':%s' % (self.server_motd,))
