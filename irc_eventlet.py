@@ -14,6 +14,8 @@ class RPL(object):
     CREATED = '003'
     MYINFO = '004'
     ENDOFWHO = '315'
+    NOTOPIC = '331'
+    TOPIC = '332'
     WHOREPLY = '352'
     NAMREPLY = '353'
     ENDOFNAMES = '366'
@@ -93,6 +95,11 @@ class IRCClient(object):
         pass
     
     def channel_unsubscribe(self, channel):
+        # This is for a subclass to implement
+        # raise NotImplementedError
+        pass
+    
+    def channel_topic(self, channel):
         # This is for a subclass to implement
         # raise NotImplementedError
         pass
@@ -227,6 +234,12 @@ class IRCClient(object):
                 self.send(ERR.INVITEONLYCHAN,
                     '%s :Cannot join channel (+i)' % (channel,))
                 return
+            
+            topic = self.channel_topic(channel)
+            if topic:
+                self.send(RPL.TOPIC, '%s :%s' % (channel, topic))
+            else:
+                self.send(RPL.NOTOPIC, '%s :No topic is set' % (channel,))
             
             self.channels.add(channel)
             self.channel_subscribe(channel)
