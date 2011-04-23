@@ -235,15 +235,15 @@ class IRCClient(object):
                     '%s :Cannot join channel (+i)' % (channel,))
                 return
             
+            self.channels.add(channel)
+            self.channel_subscribe(channel)
+            self.send_command(self.nick, 'JOIN', channel)
+            
             topic = self.channel_topic(channel)
             if topic:
                 self.send(RPL.TOPIC, '%s :%s' % (channel, topic))
             else:
                 self.send(RPL.NOTOPIC, '%s :No topic is set' % (channel,))
-            
-            self.channels.add(channel)
-            self.channel_subscribe(channel)
-            self.send_command(self.nick, 'JOIN', channel)
             
             # Send the logged-in nicks, in chunks of 10
             nicks = self.channel_nicks(channel)
