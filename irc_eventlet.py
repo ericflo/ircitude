@@ -13,6 +13,7 @@ class RPL(object):
     YOURHOST = '002'
     CREATED = '003'
     MYINFO = '004'
+    ISON = '303'
     ENDOFWHO = '315'
     NOTOPIC = '331'
     TOPIC = '332'
@@ -31,6 +32,7 @@ class ERR(object):
     UNKNOWNMODE = '472'
     INVITEONLYCHAN = '473'
     NOTREGISTERED = '451'
+    NEEDMOREPARAMS = '461'
 
 
 class ClientQuitException(Exception):
@@ -111,6 +113,13 @@ class IRCClient(object):
         """
         pass
     
+    def channel_action(self, channel, message):
+        """
+        This is useful for a subclass to implement when a new action is
+        received from the user.
+        """
+        pass
+    
     def user_message(self, nick, message):
         """
         This is useful for a subclass to implement when a new private message
@@ -118,16 +127,20 @@ class IRCClient(object):
         """
         pass
     
+    def user_online(self, nick):
+        return True
+    
     def _send(self, line):
+        line = line.encode('utf-8')
         print '<<<', repr(line)
-        self._writer.write(line + '\r\n')
+        self._writer.write(line.encode('utf-8') + '\r\n')
         self._writer.flush()
     
     def send(self, cmd, text=None):
-        self._send(':%s %s %s %s' % (self.server_name, cmd, self.nick, text))
+        self._send(u':%s %s %s %s' % (self.server_name, cmd, self.nick, text))
     
     def send_command(self, from_nick, command, channel, msg=None):
-        line = ':%s!%s@%s %s %s' % (
+        line = u':%s!%s@%s %s %s' % (
             from_nick,
             from_nick,
             self.server_name,
@@ -135,7 +148,7 @@ class IRCClient(object):
             channel,
         )
         if msg:
-            line += ' :' + msg
+            line += u' :' + msg
         self._send(line)
     
     def handle(self):
@@ -151,7 +164,7 @@ class IRCClient(object):
                     self.handle_message(line)
                 else:
                     command, _, rest = line.partition(' ')
-                    handler_name = 'handle_%s' % (command,)
+                    handler_name = 'handle_%s' % (command.upper(),)
                     getattr(self, handler_name, self.handle_UNKNOWN)(line)
         except ClientQuitException:
             pass
@@ -171,7 +184,9 @@ class IRCClient(object):
             return
         channel = split_line[1]
         message = ' '.join(split_line[2:]).lstrip(':')
-        if channel[0] == '#':
+        if message.startswith('\x01ACTION') and message.endswith('\x01'):
+            self.channel_action(channel, message[7:-1])
+        elif channel[0] == '#':
             self.channel_message(channel, message)
         else:
             self.user_message(channel, message)
@@ -278,6 +293,13 @@ class IRCClient(object):
     
     def handle_QUIT(self, line):
         raise ClientQuitException()
+    
+    def handle_ISON(self, line):
+        nicks = [n.strip() for n in line.split(' ')[1:]]
+        if not nicks:
+            return self.send(ERR.NEEDMOREPARAMS, ':Not enough parameters')
+        nicks = filter(self.user_online, nicks)
+        return self.send(RPL.ISON, (':' + ' '.join(nicks)) if nicks else '')
     
     def handle_UNKNOWN(self, line):
         print line
